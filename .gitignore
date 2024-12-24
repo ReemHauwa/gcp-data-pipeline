@@ -1,0 +1,14 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+venv/
+.env
+
+# GCP
+.gcloud/
+*.json
+
+# IDE
+.vscode/
+.idea/
