@@ -1,0 +1,55 @@
+name: Deploy to GCP
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v2
+
+    - name: Set up Python
+      uses: actions/setup-python@v2
+      with:
+        python-version: '3.9'
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install pytest
+        pip install -r functions/ingestion/requirements.txt
+        pip install -r functions/transformation/requirements.txt
+
+    - name: Run tests
+      run: |
+        pytest tests/
+
+    - name: Setup Google Cloud SDK
+      uses: google-github-actions/setup-gcloud@v0
+      with:
+        project_id: ${{ secrets.GCP_PROJECT_ID }}
+        service_account_key: ${{ secrets.GCP_SA_KEY }}
+        export_default_credentials: true
+
+    - name: Deploy Ingestion Function
+      run: |
+        gcloud functions deploy data-ingestion \
+          --runtime python39 \
+          --trigger-http \
+          --source=./functions/ingestion \
+          --entry-point=ingest_data \
+          --region=us-central1
+
+    - name: Deploy Transformation Function
+      run: |
+        gcloud functions deploy data-transformation \
+          --runtime python39 \
+          --trigger-event=google.storage.object.finalize \
+          --source=./functions/transformation \
+          --entry-point=transform_data \
+          --region=us-central1
